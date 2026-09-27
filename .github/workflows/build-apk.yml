@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [client-app, driver-app]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Распаковать проект из zip
+        run: unzip -o gazelle-project.zip -d extracted
+
+      - name: Установить JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Установить Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Установить Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Собрать debug APK (${{ matrix.app }})
+        working-directory: extracted/${{ matrix.app }}
+        run: gradle assembleDebug --no-daemon
+
+      - name: Загрузить APK как артефакт
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: extracted/${{ matrix.app }}/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
